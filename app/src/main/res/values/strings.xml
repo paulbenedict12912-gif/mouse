@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Mouse Overlay</string>
+    <string name="accessibility_desc">Enables the mouse overlay to tap and long-press on screen for you.</string>
+</resources>
