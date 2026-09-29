@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#111318">
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Mouse Overlay"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:paddingBottom="20dp" />
+
+        <Button
+            android:id="@+id/btnOverlay"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="1. Enable Display Over Other Apps" />
+
+        <Button
+            android:id="@+id/btnAccess"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="2. Enable Accessibility Service" />
+
+        <Button
+            android:id="@+id/btnStart"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="3. Start Overlay" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Joystick size"
+            android:textColor="#FFFFFF"
+            android:paddingTop="24dp" />
+        <SeekBar
+            android:id="@+id/seekJoystick"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="380" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cursor size"
+            android:textColor="#FFFFFF"
+            android:paddingTop="8dp" />
+        <SeekBar
+            android:id="@+id/seekCursor"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="140" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Button size"
+            android:textColor="#FFFFFF"
+            android:paddingTop="8dp" />
+        <SeekBar
+            android:id="@+id/seekButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="320" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Tip: Long-press the joystick or a button to resize it directly on screen."
+            android:textColor="#AAAAAA"
+            android:paddingTop="24dp"
+            android:textSize="12sp" />
+    </LinearLayout>
+</ScrollView>
