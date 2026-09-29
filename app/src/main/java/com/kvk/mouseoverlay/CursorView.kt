@@ -30,14 +30,15 @@ class CursorView(context: Context) : View(context) {
     override fun onDraw(canvas: Canvas) {
         val w = width.toFloat()
         val h = height.toFloat()
+        // Tip of the arrow is exactly at (0, 0) - top-left corner of the view
         val path = Path().apply {
-            moveTo(w * 0.12f, h * 0.05f)
-            lineTo(w * 0.12f, h * 0.85f)
-            lineTo(w * 0.36f, h * 0.62f)
-            lineTo(w * 0.54f, h * 0.95f)
-            lineTo(w * 0.68f, h * 0.88f)
-            lineTo(w * 0.51f, h * 0.56f)
-            lineTo(w * 0.85f, h * 0.52f)
+            moveTo(0f, 0f)
+            lineTo(0f, h * 0.85f)
+            lineTo(w * 0.28f, h * 0.62f)
+            lineTo(w * 0.48f, h * 0.95f)
+            lineTo(w * 0.62f, h * 0.88f)
+            lineTo(w * 0.44f, h * 0.56f)
+            lineTo(w * 0.80f, h * 0.52f)
             close()
         }
         canvas.drawPath(path, fill)
