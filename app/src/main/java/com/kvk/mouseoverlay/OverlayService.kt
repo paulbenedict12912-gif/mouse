@@ -39,7 +39,6 @@ class OverlayService : Service() {
     private var screenW = 1080
     private var screenH = 1920
 
-    // Auto-scroll state
     private var scrollCooldown = 0L
 
     private val ticker = object : Runnable {
@@ -54,7 +53,6 @@ class OverlayService : Service() {
                 if (cursorY > screenH - 20) { cursorY = (screenH - 20).toFloat(); clamped = true }
                 cursorView?.updatePosition(cursorX, cursorY)
 
-                // Auto-scroll when stuck at edge and still pushing
                 val now = System.currentTimeMillis()
                 if (clamped && now - scrollCooldown > 120) {
                     scrollCooldown = now
@@ -114,7 +112,6 @@ class OverlayService : Service() {
         val curSize = Prefs.getCursorSize(this)
         val btnSize = Prefs.getButtonSize(this)
 
-        // Joystick position: relative to bottom-left corner
         val joyX = Prefs.getJoyX(this)
         val joyY = Prefs.getJoyY(this)
 
@@ -140,7 +137,8 @@ class OverlayService : Service() {
                 overlayType(),
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
                         WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
-                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                        WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
+                        WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
                 PixelFormat.TRANSLUCENT
             ).apply {
                 gravity = Gravity.TOP or Gravity.START
@@ -187,18 +185,20 @@ class OverlayService : Service() {
         }
     }
 
+    private fun getCursorScreenPos(): Pair<Int, Int> {
+        val loc = IntArray(2)
+        cursorView?.getLocationOnScreen(loc)
+        return Pair(loc[0], loc[1])
+    }
+
     private fun doClick(right: Boolean) {
-        // Click at cursor's top-left (matches visual tip since CursorView draws from 0,0)
-        val tipX = cursorX.toInt()
-        val tipY = cursorY.toInt()
+        val (tipX, tipY) = getCursorScreenPos()
         MouseAccessibilityService.instance?.tap(tipX, tipY, right)
     }
 
     private fun doScroll(dx: Float, dy: Float) {
         val svc = MouseAccessibilityService.instance ?: return
-        val cx = cursorX.toInt()
-        val cy = cursorY.toInt()
-        // Determine dominant axis
+        val (cx, cy) = getCursorScreenPos()
         if (Math.abs(dy) > Math.abs(dx)) {
             if (dy > 0) svc.swipe(cx, cy, cx, cy - 300, 200L)
             else svc.swipe(cx, cy, cx, cy + 300, 200L)
@@ -212,7 +212,8 @@ class OverlayService : Service() {
         WindowManager.LayoutParams(
             w, h,
             overlayType(),
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
             this.gravity = Gravity.BOTTOM or Gravity.START
