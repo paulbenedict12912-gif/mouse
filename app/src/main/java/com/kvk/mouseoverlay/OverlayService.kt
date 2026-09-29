@@ -13,6 +13,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.view.Gravity
+import android.view.View
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
 
@@ -97,14 +98,16 @@ class OverlayService : Service() {
         val joySize = Prefs.getJoystickSize(this)
         val curSize = Prefs.getCursorSize(this)
         val btnSize = Prefs.getButtonSize(this)
+        val dm = resources.displayMetrics
+        val screenW = dm.widthPixels
+        val screenH = dm.heightPixels
 
-        joystickView = JoystickView(this) { dx, dy ->
-            vx = dx * MAX_SPEED
-            vy = dy * MAX_SPEED
-        }.also {
+        joystickView = JoystickView(this, 
+            { dx, dy -> vx = dx * MAX_SPEED; vy = dy * MAX_SPEED },
+            { dX, dY -> moveView(joystickView, dX, dY) }
+        ).also {
             it.size = joySize
-            safeAdd(it, baseParams(joySize, joySize,
-                Gravity.BOTTOM or Gravity.START, 60, 160))
+            safeAdd(it, baseParams(joySize, joySize, 60, screenH - 500))
         }
 
         cursorView = CursorView(this).also {
@@ -124,31 +127,46 @@ class OverlayService : Service() {
             safeAdd(it, p)
         }
 
-        leftBtn = ClickButtonView(this, "L") { doClick(false) }.also {
+        leftBtn = ClickButtonView(this, "L", 
+            { doClick(false) },
+            { dX, dY -> moveView(leftBtn, dX, dY) }
+        ).also {
             it.size = btnSize
-            safeAdd(it, baseParams(btnSize, btnSize,
-                Gravity.BOTTOM or Gravity.END, 300, 160))
+            safeAdd(it, baseParams(btnSize, btnSize, screenW - 420, screenH - 500))
         }
 
-        rightBtn = ClickButtonView(this, "R") { doClick(true) }.also {
+        rightBtn = ClickButtonView(this, "R", 
+            { doClick(true) },
+            { dX, dY -> moveView(rightBtn, dX, dY) }
+        ).also {
             it.size = btnSize
-            safeAdd(it, baseParams(btnSize, btnSize,
-                Gravity.BOTTOM or Gravity.END, 60, 160))
+            safeAdd(it, baseParams(btnSize, btnSize, screenW - 260, screenH - 500))
         }
+    }
+
+    private fun moveView(v: View?, dX: Int, dY: Int) {
+        val params = v?.layoutParams as? WindowManager.LayoutParams ?: return
+        params.x += dX
+        params.y += dY
+        try { wm.updateViewLayout(v, params) } catch (_: Exception) {}
     }
 
     private fun doClick(right: Boolean) {
-        MouseAccessibilityService.instance?.tap(cursorX.toInt(), cursorY.toInt(), right)
+        val curSize = Prefs.getCursorSize(this).toFloat()
+        // Adjust click coordinates to match the visual tip of the cursor arrow
+        val tipX = (cursorX + curSize * 0.12f).toInt()
+        val tipY = (cursorY + curSize * 0.05f).toInt()
+        MouseAccessibilityService.instance?.tap(tipX, tipY, right)
     }
 
-    private fun baseParams(w: Int, h: Int, gravity: Int, x: Int, y: Int) =
+    private fun baseParams(w: Int, h: Int, x: Int, y: Int) =
         WindowManager.LayoutParams(
             w, h,
             overlayType(),
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            this.gravity = gravity
+            this.gravity = Gravity.TOP or Gravity.START
             this.x = x
             this.y = y
         }
@@ -160,11 +178,11 @@ class OverlayService : Service() {
             @Suppress("DEPRECATION")
             WindowManager.LayoutParams.TYPE_PHONE
 
-    private fun safeAdd(v: android.view.View, p: WindowManager.LayoutParams) {
+    private fun safeAdd(v: View, p: WindowManager.LayoutParams) {
         try { wm.addView(v, p) } catch (_: Exception) {}
     }
 
-    private fun safeRemove(v: android.view.View) {
+    private fun safeRemove(v: View) {
         try { wm.removeView(v) } catch (_: Exception) {}
     }
 
