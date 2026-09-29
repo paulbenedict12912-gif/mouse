@@ -38,6 +38,14 @@
             android:layout_marginTop="16dp"
             android:text="3. Start Overlay" />
 
+        <Switch
+            android:id="@+id/switchAdjust"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Adjust Mode (drag layout, no cursor movement)"
+            android:textColor="#FFFFFF" />
+
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -77,7 +85,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Tip: Long-press the joystick or a button to resize it directly on screen."
+            android:text="Tip: Toggle Adjust Mode ON to drag the joystick and buttons around. Toggle OFF to use them normally."
             android:textColor="#AAAAAA"
             android:paddingTop="24dp"
             android:textSize="12sp" />
