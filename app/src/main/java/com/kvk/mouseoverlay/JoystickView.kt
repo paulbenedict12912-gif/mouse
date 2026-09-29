@@ -31,7 +31,7 @@ class JoystickView(
     private val movePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#FFAA33")
         style = Paint.Style.STROKE
-        strokeWidth = 5f
+        strokeWidth = 6f
     }
 
     var size: Int = 220
@@ -40,10 +40,9 @@ class JoystickView(
     private var knobX = 0f
     private var knobY = 0f
     private var activePointerId = -1
-    private var dragMode = false
-    private var lastTouchX = 0f
-    private var lastTouchY = 0f
-    private var accumulatedMove = 0f
+    private var adjusting = false
+    private var lastX = 0f
+    private var lastY = 0f
 
     override fun onMeasure(w: Int, h: Int) {
         setMeasuredDimension(size, size)
@@ -54,8 +53,9 @@ class JoystickView(
         val cy = height / 2f
         val radius = cx - 6f
         canvas.drawCircle(cx, cy, radius, basePaint)
-        if (dragMode) {
-            canvas.drawCircle(cx, cy, radius - 2f, movePaint)
+        if (adjusting) {
+            canvas.drawCircle(cx, cy, radius - 4f, movePaint)
+            canvas.drawCircle(cx, cy, radius - 14f, movePaint)
         } else {
             canvas.drawCircle(cx, cy, radius, ringPaint)
         }
@@ -69,38 +69,23 @@ class JoystickView(
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 activePointerId = event.getPointerId(0)
-                lastTouchX = event.x
-                lastTouchY = event.y
-                accumulatedMove = 0f
-                dragMode = false
-                updateKnob(event.x, event.y)
+                adjusting = Prefs.isAdjustMode(context)
+                lastX = event.x
+                lastY = event.y
+                if (!adjusting) updateKnob(event.x, event.y)
+                invalidate()
                 return true
             }
             MotionEvent.ACTION_MOVE -> {
                 val idx = event.findPointerIndex(activePointerId)
                 if (idx < 0) return false
-                val cx = width / 2f
-                val cy = height / 2f
-                val dx = event.getX(idx) - cx
-                val dy = event.getY(idx) - cy
-                val d = hypot(dx.toDouble(), dy.toDouble()).toFloat()
-                val maxR = cx - 6f
-
-                // If user drags far outside the joystick radius, switch to drag mode
-                if (!dragMode && d > maxR * 1.6f) {
-                    dragMode = true
-                    knobX = 0f; knobY = 0f
-                    onMove(0f, 0f)
-                    invalidate()
-                }
-
-                if (dragMode) {
-                    val moveX = event.getX(idx) - lastTouchX
-                    val moveY = event.getY(idx) - lastTouchY
+                if (adjusting) {
+                    val moveX = event.getX(idx) - lastX
+                    val moveY = event.getY(idx) - lastY
                     if (abs(moveX) > 0.5f || abs(moveY) > 0.5f) {
                         onDrag(moveX.toInt(), moveY.toInt())
-                        lastTouchX = event.getX(idx)
-                        lastTouchY = event.getY(idx)
+                        lastX = event.getX(idx)
+                        lastY = event.getY(idx)
                     }
                 } else {
                     updateKnob(event.getX(idx), event.getY(idx))
@@ -108,7 +93,7 @@ class JoystickView(
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                dragMode = false
+                adjusting = false
                 knobX = 0f; knobY = 0f
                 onMove(0f, 0f)
                 invalidate()
