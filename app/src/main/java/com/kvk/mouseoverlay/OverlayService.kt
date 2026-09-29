@@ -31,23 +31,35 @@ class OverlayService : Service() {
     private var rightBtn: ClickButtonView? = null
 
     private val handler = Handler(Looper.getMainLooper())
-    private var cursorX = 200f
-    private var cursorY = 400f
+    private var cursorX = 300f
+    private var cursorY = 500f
     private var vx = 0f
     private var vy = 0f
     private val MAX_SPEED = 22f
+    private var screenW = 1080
+    private var screenH = 1920
+
+    // Auto-scroll state
+    private var scrollCooldown = 0L
 
     private val ticker = object : Runnable {
         override fun run() {
             if (vx != 0f || vy != 0f) {
                 cursorX += vx
                 cursorY += vy
-                val dm = resources.displayMetrics
-                if (cursorX < 0f) cursorX = 0f
-                if (cursorY < 0f) cursorY = 0f
-                if (cursorX > dm.widthPixels) cursorX = dm.widthPixels.toFloat()
-                if (cursorY > dm.heightPixels) cursorY = dm.heightPixels.toFloat()
+                var clamped = false
+                if (cursorX < 0f) { cursorX = 0f; clamped = true }
+                if (cursorY < 0f) { cursorY = 0f; clamped = true }
+                if (cursorX > screenW - 20) { cursorX = (screenW - 20).toFloat(); clamped = true }
+                if (cursorY > screenH - 20) { cursorY = (screenH - 20).toFloat(); clamped = true }
                 cursorView?.updatePosition(cursorX, cursorY)
+
+                // Auto-scroll when stuck at edge and still pushing
+                val now = System.currentTimeMillis()
+                if (clamped && now - scrollCooldown > 120) {
+                    scrollCooldown = now
+                    doScroll(vx, vy)
+                }
             }
             handler.postDelayed(this, 16L)
         }
@@ -59,6 +71,9 @@ class OverlayService : Service() {
         super.onCreate()
         instance = this
         wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        val dm = resources.displayMetrics
+        screenW = dm.widthPixels
+        screenH = dm.heightPixels
         startForegroundCompat()
         rebuild()
         handler.post(ticker)
@@ -98,16 +113,24 @@ class OverlayService : Service() {
         val joySize = Prefs.getJoystickSize(this)
         val curSize = Prefs.getCursorSize(this)
         val btnSize = Prefs.getButtonSize(this)
-        val dm = resources.displayMetrics
-        val screenW = dm.widthPixels
-        val screenH = dm.heightPixels
 
-        joystickView = JoystickView(this, 
+        // Joystick position: relative to bottom-left corner
+        val joyX = Prefs.getJoyX(this)
+        val joyY = Prefs.getJoyY(this)
+
+        joystickView = JoystickView(this,
             { dx, dy -> vx = dx * MAX_SPEED; vy = dy * MAX_SPEED },
-            { dX, dY -> moveView(joystickView, dX, dY) }
+            { dX, dY ->
+                val p = joystickView?.layoutParams as? WindowManager.LayoutParams
+                if (p != null) {
+                    p.x += dX; p.y += dY
+                    try { wm.updateViewLayout(joystickView, p) } catch (_: Exception) {}
+                    Prefs.setJoyPos(this, p.x, p.y)
+                }
+            }
         ).also {
             it.size = joySize
-            safeAdd(it, baseParams(joySize, joySize, 60, screenH - 500))
+            safeAdd(it, baseParams(joySize, joySize, joyX, joyY))
         }
 
         cursorView = CursorView(this).also {
@@ -127,36 +150,62 @@ class OverlayService : Service() {
             safeAdd(it, p)
         }
 
-        leftBtn = ClickButtonView(this, "L", 
+        val leftX = Prefs.getLeftX(this)
+        val leftY = Prefs.getLeftY(this)
+
+        leftBtn = ClickButtonView(this, "L",
             { doClick(false) },
-            { dX, dY -> moveView(leftBtn, dX, dY) }
+            { dX, dY ->
+                val p = leftBtn?.layoutParams as? WindowManager.LayoutParams
+                if (p != null) {
+                    p.x += dX; p.y += dY
+                    try { wm.updateViewLayout(leftBtn, p) } catch (_: Exception) {}
+                    Prefs.setLeftPos(this, p.x, p.y)
+                }
+            }
         ).also {
             it.size = btnSize
-            safeAdd(it, baseParams(btnSize, btnSize, screenW - 420, screenH - 500))
+            safeAdd(it, baseParams(btnSize, btnSize, leftX, leftY))
         }
 
-        rightBtn = ClickButtonView(this, "R", 
+        val rightX = Prefs.getRightX(this)
+        val rightY = Prefs.getRightY(this)
+
+        rightBtn = ClickButtonView(this, "R",
             { doClick(true) },
-            { dX, dY -> moveView(rightBtn, dX, dY) }
+            { dX, dY ->
+                val p = rightBtn?.layoutParams as? WindowManager.LayoutParams
+                if (p != null) {
+                    p.x += dX; p.y += dY
+                    try { wm.updateViewLayout(rightBtn, p) } catch (_: Exception) {}
+                    Prefs.setRightPos(this, p.x, p.y)
+                }
+            }
         ).also {
             it.size = btnSize
-            safeAdd(it, baseParams(btnSize, btnSize, screenW - 260, screenH - 500))
+            safeAdd(it, baseParams(btnSize, btnSize, rightX, rightY))
         }
-    }
-
-    private fun moveView(v: View?, dX: Int, dY: Int) {
-        val params = v?.layoutParams as? WindowManager.LayoutParams ?: return
-        params.x += dX
-        params.y += dY
-        try { wm.updateViewLayout(v, params) } catch (_: Exception) {}
     }
 
     private fun doClick(right: Boolean) {
-        val curSize = Prefs.getCursorSize(this).toFloat()
-        // Adjust click coordinates to match the visual tip of the cursor arrow
-        val tipX = (cursorX + curSize * 0.12f).toInt()
-        val tipY = (cursorY + curSize * 0.05f).toInt()
+        // Click at cursor's top-left (matches visual tip since CursorView draws from 0,0)
+        val tipX = cursorX.toInt()
+        val tipY = cursorY.toInt()
         MouseAccessibilityService.instance?.tap(tipX, tipY, right)
+    }
+
+    private fun doScroll(dx: Float, dy: Float) {
+        val svc = MouseAccessibilityService.instance ?: return
+        val cx = cursorX.toInt()
+        val cy = cursorY.toInt()
+        // Determine dominant axis
+        if (Math.abs(dy) > Math.abs(dx)) {
+            if (dy > 0) svc.swipe(cx, cy, cx, cy - 300, 200L)
+            else svc.swipe(cx, cy, cx, cy + 300, 200L)
+        } else {
+            if (dx > 0) svc.swipe(cx, cy, cx - 300, cy, 200L)
+            else svc.swipe(cx, cy, cx + 300, cy, 200L)
+        }
     }
 
     private fun baseParams(w: Int, h: Int, x: Int, y: Int) =
@@ -166,7 +215,7 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            this.gravity = Gravity.TOP or Gravity.START
+            this.gravity = Gravity.BOTTOM or Gravity.START
             this.x = x
             this.y = y
         }
