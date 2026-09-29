@@ -30,6 +30,18 @@ class MouseAccessibilityService : AccessibilityService() {
         try { dispatchGesture(gesture, null, null) } catch (_: Exception) {}
     }
 
+    fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, duration: Long) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return
+        val path = Path().apply {
+            moveTo(x1.toFloat(), y1.toFloat())
+            lineTo(x2.toFloat(), y2.toFloat())
+        }
+        val gesture = GestureDescription.Builder()
+            .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+            .build()
+        try { dispatchGesture(gesture, null, null) } catch (_: Exception) {}
+    }
+
     override fun onDestroy() {
         instance = null
         super.onDestroy()
